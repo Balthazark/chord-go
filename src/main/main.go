@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"slices"
 	"strconv"
+	"strings"
 )
 
 type FlagType struct {
@@ -24,19 +25,6 @@ const (
 	STRING = iota
 	INT
 )
-
-type Key string
-
-type NodeAddress string
-
-type Node struct {
-	Address     NodeAddress
-	FingerTable []NodeAddress
-	Predecessor NodeAddress
-	Successors  []NodeAddress
-
-	Bucket map[Key]string
-}
 
 var flagMap = map[string]FlagType{
 	"-a":    {regex: `^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$`, dataType: STRING},
@@ -93,44 +81,6 @@ func validateArgs(args []string) (bool, map[string]string) {
 	return createNewChord, flags
 }
 
-func createNode(ip string, port int) {
-	node := initializeChordNode(ip, port)
-	rpc.Register(node)
-
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		log.Fatal("Error starting RPC server:", err)
-	}
-	defer listener.Close()
-
-	fmt.Printf("Chord node started at %s:%d\n", ip, port)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal("Error accepting connection:", err)
-		}
-		go rpc.ServeConn(conn)
-	}
-}
-
-func initializeChordNode(ip string, port int) *Node {
-	node := &Node{
-		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
-		FingerTable: make([]NodeAddress, 0), 
-		Predecessor: "",                     
-		Successors:  make([]NodeAddress, 0), 
-		Bucket:      make(map[Key]string),   
-	}
-	return node
-}
-
-func (node *Node) Ping(request string, reply *string) error {
-	fmt.Println("RAN PING FUNCTION")
-	*reply = "Pong"
-	return nil
-}
-
 func handleInput(port int) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
@@ -146,7 +96,44 @@ func handleInput(port int) {
 			fmt.Print("Enter address to ping (format: IP:Port): ")
 			scanner.Scan()
 			address := scanner.Text()
-			pingChordNode(address)
+			PingChordNode(address)
+		case "get":
+			fmt.Print("Usage: get <key> <address>")
+			scanner.Scan()
+			input := scanner.Text()
+			getArgs := strings.Fields(input)
+			if len(getArgs) < 2 {
+				fmt.Println("Invalid command. Usage: get <key> <address>")
+				continue
+			}
+			key := Key(getArgs[0])
+			address := getArgs[1]
+			GetKeyValue(address, key)
+		case "put":
+			fmt.Println("Enter key value address: <key> <value> <address>")
+			scanner.Scan()
+			input := scanner.Text()
+			putArgs := strings.Fields(input)
+			if len(putArgs) < 3 {
+				fmt.Println("Invalid command. Usage: put <key> <value> <address>")
+				continue
+			}
+			key := Key(putArgs[0])
+			value := putArgs[1]
+			address := putArgs[2]
+			PutKeyValue(address, key, value)
+		case "delete":
+			fmt.Print("Usage: get <key> <address>")
+			scanner.Scan()
+			input := scanner.Text()
+			deleteArgs := strings.Fields(input)
+			if len(deleteArgs) < 2 {
+				fmt.Println("Invalid command. Usage: delete <key> <address>")
+				continue
+			}
+			key := Key(deleteArgs[0])
+			address := deleteArgs[1]
+			DeleteKeyValue(address, key)
 		default:
 			fmt.Println("Unknown command. Type 'help' for available commands.")
 		}
@@ -161,22 +148,6 @@ func parsePort(portArg string) int {
 	return port
 }
 
-func pingChordNode(address string) {
-	fmt.Println("ADRRESS IN PING HANDLER", address)
-	client, err := rpc.DialHTTP("tcp", address)
-	if err != nil {
-		log.Fatal("Error connecting to Chord node:", err)
-	}
-
-	var reply string
-	err = client.Call("Node.Ping", "Ping request", &reply)
-	if err != nil {
-		log.Fatal("Error calling Ping method:", err)
-	}
-
-	fmt.Println("Ping response from", address, ":", reply)
-}
-
 func main() {
 
 	args := os.Args
@@ -189,11 +160,11 @@ func main() {
 
 	if isNewRing {
 		fmt.Print("New chord ring started")
-		createNode(argsMap["-a"], port)
-		return 
+		CreateNode(argsMap["-a"], port)
+		return
 	}
 
-	node := initializeChordNode(argsMap["-a"], port)
+	node := InitializeChordNode(argsMap["-a"], port)
 
 	rpc.Register(node)
 	rpc.HandleHTTP()

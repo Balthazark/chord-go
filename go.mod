@@ -1,3 +1,3 @@
-module src
+module chrod-go
 
 go 1.21.3
