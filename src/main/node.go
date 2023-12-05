@@ -60,7 +60,7 @@ func InitializeChordNode(ip string, port int) *Node {
 }
 
 func (node *Node) Self(request string, reply *Node) error{
-	*reply = node
+	*reply = *node
 	return nil
 }
 
@@ -72,14 +72,12 @@ func getNode(address string) *Node{
 		log.Fatal("Error connecting to Chord node", err)
 	}
 	var reply Node
-	err = client.Call("Node.Join", node.Address, &reply)
+	err = client.Call("Node.Self", "", &reply)
 	if err != nil {
 		log.Fatal("Error calling Join method")
 	}
-
-	node.Predecessor = NodeAddress(successorAddress)
 	
-	return *reply
+	return &reply
 }
 
 // Node rpc functions
