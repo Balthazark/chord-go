@@ -81,7 +81,7 @@ func validateArgs(args []string) (bool, map[string]string) {
 	return createNewChord, flags
 }
 
-func handleInput(port int) {
+func handleInput(port int, node *Node) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		input := scanner.Text()
@@ -135,25 +135,17 @@ func handleInput(port int) {
 			address := deleteArgs[1]
 			DeleteKeyValue(address, key)
 		case "dump":
-			fmt.Println("Enter: <address>")
-			scanner.Scan()
-			input := scanner.Text()
-			dumpArgs := strings.Fields(input)
-			if len(dumpArgs) < 1 {
-				fmt.Println("Invalid command. Usage: dump <address>")
-				continue
-			}
-			DumpNode(dumpArgs[0])
+			node.DumpNode()
 		case "join":
-			fmt.Println("Enter: <nodeAddress> <successorAddress>")
+			fmt.Println("Enter: <successorAddress>")
 			scanner.Scan()
 			input := scanner.Text()
 			joinArgs := strings.Fields(input)
-			if len(joinArgs) < 2 {
-				fmt.Println("Invalid command. Usage: join <nodeAddress> <address>")
+			if len(joinArgs) < 1 {
+				fmt.Println("Invalid command. Usage: join <address>")
 				continue
 			}
-			AddSuccessor(joinArgs[0], joinArgs[1])
+			node.AddSuccessor(joinArgs[0])
 
 		default:
 			fmt.Println("Unknown command. Type 'help' for available commands.")
@@ -197,7 +189,7 @@ func main() {
 
 	fmt.Printf("Chord node started at %s\n", node.Address)
 	go http.Serve(listener, nil)
-	go handleInput(port)
+	go handleInput(port,node)
 
 	select {}
 }

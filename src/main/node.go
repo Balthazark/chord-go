@@ -89,7 +89,10 @@ func (node *Node) Delete(request Key, reply *bool) error {
 }
 
 func (node *Node) Dump(request *struct{}, reply *struct{}) error {
-	fmt.Println(node)
+	fmt.Println("Adress: ", node.Address)
+	fmt.Println("Pred: ",node.Predecessor)
+	fmt.Println("SUcc: ",node.Successors)
+	fmt.Println("BUCKET: ",node.Bucket)
 	return nil
 }
 
@@ -99,21 +102,24 @@ func (node *Node) Join(successorAddress string, reply *string) error {
 	return nil
 }
 
-func AddSuccessor(nodeAddress string, successorAddress string) {
-	client, err := rpc.DialHTTP("tcp", nodeAddress)
+
+func (node *Node)AddSuccessor(successorAddress string) {
+	client, err := rpc.DialHTTP("tcp", successorAddress)
 	if err != nil {
 		log.Fatal("Error connecting to Chord node", err)
 	}
 	var reply string
-	err = client.Call("Node.Join", successorAddress, &reply)
+	err = client.Call("Node.Join", node.Address, &reply)
 	if err != nil {
 		log.Fatal("Error calling Join method")
 	}
+
+	node.Predecessor = NodeAddress(successorAddress)
 	fmt.Println(reply)
 }
 
-func DumpNode(address string) {
-	client, err := rpc.DialHTTP("tcp", address)
+func (node *Node) DumpNode() {
+	client, err := rpc.DialHTTP("tcp", string(node.Address))
 	if err != nil {
 		log.Fatal("Error connecting to Chord node", err)
 	}
