@@ -1,8 +1,10 @@
 package main
 
 import (
+	"crypto/sha1"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"net/rpc"
 )
@@ -14,6 +16,7 @@ type Key string
 type NodeAddress string
 
 type Node struct {
+	Id          big.Int
 	Address     NodeAddress
 	FingerTable []NodeAddress
 	Predecessor NodeAddress
@@ -46,6 +49,7 @@ func CreateNode(ip string, port int) {
 
 func InitializeChordNode(ip string, port int) *Node {
 	node := &Node{
+		Id:          *hashString(fmt.Sprintf("%s:%d", ip, port)),
 		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
 		FingerTable: make([]NodeAddress, 0),
 		Predecessor: "",
@@ -90,9 +94,9 @@ func (node *Node) Delete(request Key, reply *bool) error {
 
 func (node *Node) Dump(request *struct{}, reply *struct{}) error {
 	fmt.Println("Adress: ", node.Address)
-	fmt.Println("Pred: ",node.Predecessor)
-	fmt.Println("SUcc: ",node.Successors)
-	fmt.Println("BUCKET: ",node.Bucket)
+	fmt.Println("Pred: ", node.Predecessor)
+	fmt.Println("SUcc: ", node.Successors)
+	fmt.Println("BUCKET: ", node.Bucket)
 	return nil
 }
 
@@ -102,8 +106,7 @@ func (node *Node) Join(successorAddress string, reply *string) error {
 	return nil
 }
 
-
-func (node *Node)AddSuccessor(successorAddress string) {
+func (node *Node) AddSuccessor(successorAddress string) {
 	client, err := rpc.DialHTTP("tcp", successorAddress)
 	if err != nil {
 		log.Fatal("Error connecting to Chord node", err)
@@ -196,4 +199,19 @@ func DeleteKeyValue(address string, key Key) {
 	}
 
 	fmt.Printf("Delete response from %s for key %s: %t\n", address, key, reply)
+}
+
+// Helpers
+func hashString(elt string) *big.Int {
+	hasher := sha1.New()
+	hasher.Write([]byte(elt))
+	return new(big.Int).SetBytes(hasher.Sum(nil))
+}
+
+func between(start, elt, end *big.Int, inclusive bool) bool {
+    if end.Cmp(start) > 0 {
+        return (start.Cmp(elt) < 0 && elt.Cmp(end) < 0) || (inclusive && elt.Cmp(end) == 0)
+    } else {
+        return start.Cmp(elt) < 0 || elt.Cmp(end) < 0 || (inclusive && elt.Cmp(end) == 0)
+    }
 }

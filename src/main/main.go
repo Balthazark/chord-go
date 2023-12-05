@@ -161,6 +161,8 @@ func parsePort(portArg string) int {
 	return port
 }
 
+
+
 func main() {
 
 	args := os.Args
@@ -173,8 +175,9 @@ func main() {
 
 	if isNewRing {
 		fmt.Print("New chord ring started")
-		CreateNode(argsMap["-a"], port)
+		//CreateNode(argsMap["-a"], port)
 	}
+	
 
 	node := InitializeChordNode(argsMap["-a"], port)
 
