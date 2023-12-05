@@ -93,6 +93,25 @@ func (node *Node) Dump(request *struct{}, reply *struct{}) error {
 	return nil
 }
 
+func (node *Node) Join(successorAddress string, reply *string) error {
+	node.Successors = append(node.Successors, NodeAddress(successorAddress))
+	*reply = "Successfully joined"
+	return nil
+}
+
+func AddSuccessor(nodeAddress string, successorAddress string) {
+	client, err := rpc.DialHTTP("tcp", nodeAddress)
+	if err != nil {
+		log.Fatal("Error connecting to Chord node", err)
+	}
+	var reply string
+	err = client.Call("Node.Join", successorAddress, &reply)
+	if err != nil {
+		log.Fatal("Error calling Join method")
+	}
+	fmt.Println(reply)
+}
+
 func DumpNode(address string) {
 	client, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
@@ -100,8 +119,8 @@ func DumpNode(address string) {
 	}
 
 	var reply struct{}
-	var args struct {}
-	
+	var args struct{}
+
 	err = client.Call("Node.Dump", &args, &reply)
 	if err != nil {
 		log.Fatal("Error calling dump method")

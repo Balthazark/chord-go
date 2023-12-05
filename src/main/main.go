@@ -123,7 +123,7 @@ func handleInput(port int) {
 			address := putArgs[2]
 			PutKeyValue(address, key, value)
 		case "delete":
-			fmt.Print("Usage: get <key> <address>")
+			fmt.Println("Usage: get <key> <address>")
 			scanner.Scan()
 			input := scanner.Text()
 			deleteArgs := strings.Fields(input)
@@ -135,7 +135,7 @@ func handleInput(port int) {
 			address := deleteArgs[1]
 			DeleteKeyValue(address, key)
 		case "dump":
-			fmt.Print("Enter: <address>")
+			fmt.Println("Enter: <address>")
 			scanner.Scan()
 			input := scanner.Text()
 			dumpArgs := strings.Fields(input)
@@ -144,6 +144,17 @@ func handleInput(port int) {
 				continue
 			}
 			DumpNode(dumpArgs[0])
+		case "join":
+			fmt.Println("Enter: <nodeAddress> <successorAddress>")
+			scanner.Scan()
+			input := scanner.Text()
+			joinArgs := strings.Fields(input)
+			if len(joinArgs) < 2 {
+				fmt.Println("Invalid command. Usage: join <nodeAddress> <address>")
+				continue
+			}
+			AddSuccessor(joinArgs[0], joinArgs[1])
+
 		default:
 			fmt.Println("Unknown command. Type 'help' for available commands.")
 		}
