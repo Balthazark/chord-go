@@ -59,6 +59,29 @@ func InitializeChordNode(ip string, port int) *Node {
 	return node
 }
 
+func (node *Node) Self(request string, reply *Node) error{
+	*reply = node
+	return nil
+}
+
+
+
+func getNode(address string) *Node{
+	client, err := rpc.DialHTTP("tcp", address)
+	if err != nil {
+		log.Fatal("Error connecting to Chord node", err)
+	}
+	var reply Node
+	err = client.Call("Node.Join", node.Address, &reply)
+	if err != nil {
+		log.Fatal("Error calling Join method")
+	}
+
+	node.Predecessor = NodeAddress(successorAddress)
+	
+	return *reply
+}
+
 // Node rpc functions
 func (node *Node) Ping(request string, reply *string) error {
 	fmt.Println("RAN PING FUNCTION")
@@ -215,3 +238,28 @@ func between(start, elt, end *big.Int, inclusive bool) bool {
         return start.Cmp(elt) < 0 || elt.Cmp(end) < 0 || (inclusive && elt.Cmp(end) == 0)
     }
 }
+
+func (node *Node) stabilize() {
+	// Retrieve the predecessor of the successor
+	x := getNode(string(node.Successors[0]))
+	xSuccessor := getNode(string(x.Successors[0]))
+
+
+	// Check if x is a valid predecessor
+	if x != nil && between(&x.Id, &node.Id,&xSuccessor.Id, true) {
+		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
+	}
+
+	// Notify the successor about the current node (n)
+	x.notify(node)
+}
+
+func (n *Node) notify(predecessorCandidate *Node) {
+	predecessor := getNode(string(n.Predecessor))
+	// Check if the received predecessorCandidate is a valid predecessor
+	if n.Predecessor == "" || between(&predecessor.Id,&predecessorCandidate.Id,&n.Id,true) {
+		// Update the predecessor of the current node
+		n.Predecessor = predecessorCandidate.Address
+	}
+}
+
