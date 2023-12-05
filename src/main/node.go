@@ -7,7 +7,6 @@ import (
 	"net/rpc"
 )
 
-
 //Types for modeling a node
 
 type Key string
@@ -23,7 +22,7 @@ type Node struct {
 	Bucket map[Key]string
 }
 
-//Functions for creating nodes
+// Functions for creating nodes
 func CreateNode(ip string, port int) {
 	node := InitializeChordNode(ip, port)
 	rpc.Register(node)
@@ -48,15 +47,15 @@ func CreateNode(ip string, port int) {
 func InitializeChordNode(ip string, port int) *Node {
 	node := &Node{
 		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
-		FingerTable: make([]NodeAddress, 0), 
-		Predecessor: "",                     
-		Successors:  make([]NodeAddress, 0), 
-		Bucket:      make(map[Key]string),   
+		FingerTable: make([]NodeAddress, 0),
+		Predecessor: "",
+		Successors:  make([]NodeAddress, 0),
+		Bucket:      make(map[Key]string),
 	}
 	return node
 }
 
-//Node rpc functions
+// Node rpc functions
 func (node *Node) Ping(request string, reply *string) error {
 	fmt.Println("RAN PING FUNCTION")
 	*reply = "Pong"
@@ -89,9 +88,28 @@ func (node *Node) Delete(request Key, reply *bool) error {
 	return nil
 }
 
-//Node handlers for key values
+func (node *Node) Dump(request *struct{}, reply *struct{}) error {
+	fmt.Println(node)
+	return nil
+}
+
+func DumpNode(address string) {
+	client, err := rpc.DialHTTP("tcp", address)
+	if err != nil {
+		log.Fatal("Error connecting to Chord node", err)
+	}
+
+	var reply struct{}
+	var args struct {}
+	
+	err = client.Call("Node.Dump", &args, &reply)
+	if err != nil {
+		log.Fatal("Error calling dump method")
+	}
+}
+
+// Node handlers for key values
 func PingChordNode(address string) {
-	fmt.Println("ADRRESS IN PING HANDLER", address)
 	client, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
 		log.Fatal("Error connecting to Chord node:", err)

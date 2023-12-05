@@ -134,6 +134,16 @@ func handleInput(port int) {
 			key := Key(deleteArgs[0])
 			address := deleteArgs[1]
 			DeleteKeyValue(address, key)
+		case "dump":
+			fmt.Print("Enter: <address>")
+			scanner.Scan()
+			input := scanner.Text()
+			dumpArgs := strings.Fields(input)
+			if len(dumpArgs) < 1 {
+				fmt.Println("Invalid command. Usage: dump <address>")
+				continue
+			}
+			DumpNode(dumpArgs[0])
 		default:
 			fmt.Println("Unknown command. Type 'help' for available commands.")
 		}
@@ -161,7 +171,6 @@ func main() {
 	if isNewRing {
 		fmt.Print("New chord ring started")
 		CreateNode(argsMap["-a"], port)
-		return
 	}
 
 	node := InitializeChordNode(argsMap["-a"], port)
