@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type FlagType struct {
@@ -161,7 +162,12 @@ func parsePort(portArg string) int {
 	return port
 }
 
-
+func handleStabilize(node *Node,timeOut int){
+	for {
+		time.Sleep(time.Duration(timeOut))
+		node.stabilize()
+	}
+}
 
 func main() {
 
@@ -193,6 +199,7 @@ func main() {
 	fmt.Printf("Chord node started at %s\n", node.Address)
 	go http.Serve(listener, nil)
 	go handleInput(port,node)
+	go handleStabilize(node,10000)
 
 	select {}
 }
