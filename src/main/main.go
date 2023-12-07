@@ -99,42 +99,39 @@ func handleInput(port int, node *Node) {
 			address := scanner.Text()
 			PingChordNode(address)
 		case "get":
-			fmt.Print("Usage: get <key> <address>")
+			fmt.Print("Usage: get <key>")
 			scanner.Scan()
 			input := scanner.Text()
 			getArgs := strings.Fields(input)
-			if len(getArgs) < 2 {
-				fmt.Println("Invalid command. Usage: get <key> <address>")
+			if len(getArgs) < 1 {
+				fmt.Println("Invalid command. Usage: get <key>")
 				continue
 			}
 			key := Key(getArgs[0])
-			address := getArgs[1]
-			GetKeyValue(address, key)
+			GetKeyValue(node,  key)
 		case "put":
-			fmt.Println("Enter key value address: <key> <value> <address>")
+			fmt.Println("Enter key value address: <key> <value>")
 			scanner.Scan()
 			input := scanner.Text()
 			putArgs := strings.Fields(input)
-			if len(putArgs) < 3 {
-				fmt.Println("Invalid command. Usage: put <key> <value> <address>")
+			if len(putArgs) < 2 {
+				fmt.Println("Invalid command. Usage: put <key> <value>")
 				continue
 			}
 			key := Key(putArgs[0])
 			value := putArgs[1]
-			address := putArgs[2]
-			PutKeyValue(address, key, value)
+			PutKeyValue(node, key, value)
 		case "delete":
-			fmt.Println("Usage: get <key> <address>")
+			fmt.Println("Usage: get <key>")
 			scanner.Scan()
 			input := scanner.Text()
 			deleteArgs := strings.Fields(input)
-			if len(deleteArgs) < 2 {
-				fmt.Println("Invalid command. Usage: delete <key> <address>")
+			if len(deleteArgs) < 1 {
+				fmt.Println("Invalid command. Usage: delete <key>")
 				continue
 			}
 			key := Key(deleteArgs[0])
-			address := deleteArgs[1]
-			DeleteKeyValue(address, key)
+			DeleteKeyValue(node, key)
 		case "dump":
 			node.DumpNode()
 		case "join":
@@ -203,7 +200,6 @@ func main() {
 		for {
 			select {
 			case <-ticker.C:
-				fmt.Println("Stabilize")
 				node.stabilize()
 			}
 		}

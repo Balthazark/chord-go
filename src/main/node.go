@@ -202,8 +202,10 @@ func PingChordNode(address string) {
 }
 
 // Function to perform the get operation on the specified Chord node
-func GetKeyValue(address string, key Key) {
-	client, err := rpc.DialHTTP("tcp", address)
+func GetKeyValue(start *Node, key Key) {
+	address := find(&start.Id, start);
+
+	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
 		log.Fatal("Error connecting to Chord node:", err)
 	}
@@ -218,8 +220,10 @@ func GetKeyValue(address string, key Key) {
 }
 
 // Function to perform the put operation on the specified Chord node
-func PutKeyValue(address string, key Key, value string) {
-	client, err := rpc.DialHTTP("tcp", address)
+func PutKeyValue(start *Node, key Key, value string) {
+	address := find(&start.Id, start)	
+	
+	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
 		log.Fatal("Error connecting to Chord node:", err)
 	}
@@ -235,8 +239,10 @@ func PutKeyValue(address string, key Key, value string) {
 }
 
 // Function to perform the delete operation on the specified Chord node
-func DeleteKeyValue(address string, key Key) {
-	client, err := rpc.DialHTTP("tcp", address)
+func DeleteKeyValue(start *Node, key Key) {
+	address := find(&start.Id, start)	
+	
+	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
 		log.Fatal("Error connecting to Chord node:", err)
 	}
@@ -289,7 +295,6 @@ func (node *Node) find_successor(id *big.Int) (bool, *Node) {
 	successor := getNode(string(node.Successors[0]))
 
 	if between(&node.Id, id,&successor.Id,true){
-		fmt.Println("WE SHOULD NO BE HERE!")
 		return true,successor
 	} else{
 		return false, successor
@@ -305,7 +310,6 @@ func (node *Node) stabilize() {
 
 	// Check if x is a valid predecessor
 	if x != nil && between(&node.Id, &x.Id,&successor.Id, false) {
-		fmt.Println("HErro")
 		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
 	}
 
