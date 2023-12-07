@@ -47,7 +47,7 @@ func CreateNode(ip string, port, r int) {
 	}
 }
 
-func InitializeChordNode(ip string, port,r int) *Node {
+func InitializeChordNode(ip string, port, r int) *Node {
 	node := &Node{
 		Id:          *hashString(fmt.Sprintf("%s:%d", ip, port)),
 		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
@@ -56,7 +56,7 @@ func InitializeChordNode(ip string, port,r int) *Node {
 		Successors:  make([]NodeAddress, 0),
 		Bucket:      make(map[Key]string),
 	}
-	
+
 	node.Successors = append(node.Successors, node.Address)
 	return node
 }
@@ -68,7 +68,7 @@ func (node *Node) Self(request string, reply *Node) error {
 
 func getNode(address string) *Node {
 
-	if address == ""{
+	if address == "" {
 		return nil
 	}
 
@@ -132,6 +132,34 @@ func (node *Node) Join(successorAddress string, reply *string) error {
 	return nil
 }
 
+func (node *Node) GetAll(id *big.Int, reply *map[string]string) error {
+
+	temp := make(map[string]string, 0)
+
+	for key, value := range node.Bucket {
+		if between(id, hashString(string(key)), &node.Id, true) {
+			temp[string(key)] = value
+			delete(node.Bucket, key)
+		}
+	}
+
+	*reply = temp
+	return nil
+}
+
+func handleGetAll(node *Node, successorAddress string) map[string]string {
+	client, err := rpc.DialHTTP("tcp", successorAddress)
+	if err != nil {
+		log.Fatal("Error connecting to successor node")
+	}
+	var reply map[string]string
+	err = client.Call("Node.GetAll", node.Id, &reply)
+	if err != nil {
+		log.Fatal("Error calling get all method: ", err)
+	}
+	return reply
+}
+
 func (node *Node) AddSuccessor(successorAddress string) {
 	client, err := rpc.DialHTTP("tcp", successorAddress)
 	if err != nil {
@@ -146,13 +174,13 @@ func (node *Node) AddSuccessor(successorAddress string) {
 	fmt.Println(reply)
 }
 
-func handleAddPredecessor(node string, predecessor string){
-	client, err := rpc.DialHTTP("tcp",node)
+func handleAddPredecessor(node string, predecessor string) {
+	client, err := rpc.DialHTTP("tcp", node)
 	if err != nil {
 		log.Fatal("Error connecting to Chord node", err)
 	}
 	var reply string
-	err = client.Call("Node.AddPredecessor",predecessor, &reply)
+	err = client.Call("Node.AddPredecessor", predecessor, &reply)
 	if err != nil {
 		log.Fatal("Error calling Join method")
 	}
@@ -160,15 +188,11 @@ func handleAddPredecessor(node string, predecessor string){
 	fmt.Println(reply)
 }
 
-func (node *Node) AddPredecessor(predecessorAddress string, reply *string) error{
+func (node *Node) AddPredecessor(predecessorAddress string, reply *string) error {
 	node.Predecessor = NodeAddress(predecessorAddress)
 	*reply = "Added pred"
-	return nil;
+	return nil
 }
-
-
-
-
 
 func (node *Node) DumpNode() {
 	client, err := rpc.DialHTTP("tcp", string(node.Address))
@@ -203,7 +227,7 @@ func PingChordNode(address string) {
 
 // Function to perform the get operation on the specified Chord node
 func GetKeyValue(start *Node, key Key) {
-	address := find(&start.Id, start);
+	address := find(&start.Id, start)
 
 	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
@@ -221,8 +245,8 @@ func GetKeyValue(start *Node, key Key) {
 
 // Function to perform the put operation on the specified Chord node
 func PutKeyValue(start *Node, key Key, value string) {
-	address := find(&start.Id, start)	
-	
+	address := find(&start.Id, start)
+
 	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
 		log.Fatal("Error connecting to Chord node:", err)
@@ -240,8 +264,8 @@ func PutKeyValue(start *Node, key Key, value string) {
 
 // Function to perform the delete operation on the specified Chord node
 func DeleteKeyValue(start *Node, key Key) {
-	address := find(&start.Id, start)	
-	
+	address := find(&start.Id, start)
+
 	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
 		log.Fatal("Error connecting to Chord node:", err)
@@ -265,7 +289,7 @@ func hashString(elt string) *big.Int {
 
 func between(start, elt, end *big.Int, inclusive bool) bool {
 	fmt.Print(end.Cmp(start))
-	if end.Cmp(start) == 0{
+	if end.Cmp(start) == 0 {
 		return true
 	} else if end.Cmp(start) > 0 {
 		return (start.Cmp(elt) < 0 && elt.Cmp(end) < 0) || (inclusive && elt.Cmp(end) == 0)
@@ -275,11 +299,11 @@ func between(start, elt, end *big.Int, inclusive bool) bool {
 }
 
 func find(id *big.Int, start *Node) NodeAddress {
-	found, nextNode := false,start
+	found, nextNode := false, start
 	maxSteps := 32
 	i := 0
 
-	for !found && i < maxSteps{
+	for !found && i < maxSteps {
 		found, nextNode = nextNode.find_successor(id)
 		i++
 	}
@@ -294,11 +318,11 @@ func find(id *big.Int, start *Node) NodeAddress {
 func (node *Node) find_successor(id *big.Int) (bool, *Node) {
 	successor := getNode(string(node.Successors[0]))
 
-	if between(&node.Id, id,&successor.Id,true){
-		return true,successor
-	} else{
+	if between(&node.Id, id, &successor.Id, true) {
+		return true, successor
+	} else {
 		return false, successor
-	}	
+	}
 }
 
 func (node *Node) stabilize() {
@@ -309,7 +333,7 @@ func (node *Node) stabilize() {
 	println(x)
 
 	// Check if x is a valid predecessor
-	if x != nil && between(&node.Id, &x.Id,&successor.Id, false) {
+	if x != nil && between(&node.Id, &x.Id, &successor.Id, false) {
 		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
 	}
 
@@ -322,6 +346,6 @@ func (node *Node) notify(predecessorCandidate *Node) {
 	// Check if the received predecessorCandidate is a valid predecessor
 	if predecessor == nil || between(&predecessor.Id, &predecessorCandidate.Id, &node.Id, false) {
 		// Update the predecessor of the current node
-		handleAddPredecessor(string(node.Address),string(predecessorCandidate.Address))
+		handleAddPredecessor(string(node.Address), string(predecessorCandidate.Address))
 	}
 }
