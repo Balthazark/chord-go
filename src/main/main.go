@@ -162,13 +162,6 @@ func parsePort(portArg string) int {
 	return port
 }
 
-func handleStabilize(node *Node,timeOut int){
-	for {
-		time.Sleep(time.Duration(timeOut))
-		node.stabilize()
-	}
-}
-
 func main() {
 
 	args := os.Args
@@ -178,14 +171,17 @@ func main() {
 	isNewRing, argsMap := validateArgs(args)
 
 	port := parsePort(argsMap["-p"])
+	r := parsePort(argsMap["-r"])	
+	ts := parsePort(argsMap["--ts"])
 
-	if isNewRing {
-		fmt.Print("New chord ring started")
-		//CreateNode(argsMap["-a"], port)
+	node := InitializeChordNode(argsMap["-a"], port, r);
+
+	if !isNewRing {
+		joinNode := getNode(fmt.Sprintf("%s:%s",argsMap["--ja"],argsMap["--jp"]))
+		successor := find(&node.Id,joinNode)
+		node.Successors[0] = successor
 	}
-	
 
-	node := InitializeChordNode(argsMap["-a"], port)
 
 	rpc.Register(node)
 	rpc.HandleHTTP()
@@ -199,7 +195,19 @@ func main() {
 	fmt.Printf("Chord node started at %s\n", node.Address)
 	go http.Serve(listener, nil)
 	go handleInput(port,node)
-	go handleStabilize(node,10000)
+
+	go func(node *Node, timeOut int) {
+		ticker := time.NewTicker(10 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				fmt.Println("Stabilize")
+				node.stabilize()
+			}
+		}
+	}(node, ts)
 
 	select {}
 }

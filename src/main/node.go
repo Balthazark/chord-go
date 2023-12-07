@@ -26,8 +26,8 @@ type Node struct {
 }
 
 // Functions for creating nodes
-func CreateNode(ip string, port int) {
-	node := InitializeChordNode(ip, port)
+func CreateNode(ip string, port, r int) {
+	node := InitializeChordNode(ip, port, r)
 	rpc.Register(node)
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, port))
@@ -47,7 +47,7 @@ func CreateNode(ip string, port int) {
 	}
 }
 
-func InitializeChordNode(ip string, port int) *Node {
+func InitializeChordNode(ip string, port,r int) *Node {
 	node := &Node{
 		Id:          *hashString(fmt.Sprintf("%s:%d", ip, port)),
 		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
@@ -56,17 +56,22 @@ func InitializeChordNode(ip string, port int) *Node {
 		Successors:  make([]NodeAddress, 0),
 		Bucket:      make(map[Key]string),
 	}
+	
+	node.Successors = append(node.Successors, node.Address)
 	return node
 }
 
-func (node *Node) Self(request string, reply *Node) error{
+func (node *Node) Self(request string, reply *Node) error {
 	*reply = *node
 	return nil
 }
 
+func getNode(address string) *Node {
 
+	if address == ""{
+		return nil
+	}
 
-func getNode(address string) *Node{
 	client, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
 		log.Fatal("Error connecting to Chord node", err)
@@ -76,7 +81,7 @@ func getNode(address string) *Node{
 	if err != nil {
 		log.Fatal("Error calling Join method")
 	}
-	
+
 	return &reply
 }
 
@@ -138,9 +143,32 @@ func (node *Node) AddSuccessor(successorAddress string) {
 		log.Fatal("Error calling Join method")
 	}
 
-	node.Predecessor = NodeAddress(successorAddress)
 	fmt.Println(reply)
 }
+
+func handleAddPredecessor(node string, predecessor string){
+	client, err := rpc.DialHTTP("tcp",node)
+	if err != nil {
+		log.Fatal("Error connecting to Chord node", err)
+	}
+	var reply string
+	err = client.Call("Node.AddPredecessor",predecessor, &reply)
+	if err != nil {
+		log.Fatal("Error calling Join method")
+	}
+
+	fmt.Println(reply)
+}
+
+func (node *Node) AddPredecessor(predecessorAddress string, reply *string) error{
+	node.Predecessor = NodeAddress(predecessorAddress)
+	*reply = "Added pred"
+	return nil;
+}
+
+
+
+
 
 func (node *Node) DumpNode() {
 	client, err := rpc.DialHTTP("tcp", string(node.Address))
@@ -230,34 +258,66 @@ func hashString(elt string) *big.Int {
 }
 
 func between(start, elt, end *big.Int, inclusive bool) bool {
-    if end.Cmp(start) > 0 {
-        return (start.Cmp(elt) < 0 && elt.Cmp(end) < 0) || (inclusive && elt.Cmp(end) == 0)
-    } else {
-        return start.Cmp(elt) < 0 || elt.Cmp(end) < 0 || (inclusive && elt.Cmp(end) == 0)
-    }
+	fmt.Print(end.Cmp(start))
+	if end.Cmp(start) == 0{
+		return true
+	} else if end.Cmp(start) > 0 {
+		return (start.Cmp(elt) < 0 && elt.Cmp(end) < 0) || (inclusive && elt.Cmp(end) == 0)
+	} else {
+		return start.Cmp(elt) < 0 || elt.Cmp(end) < 0 || (inclusive && elt.Cmp(end) == 0)
+	}
+}
+
+func find(id *big.Int, start *Node) NodeAddress {
+	found, nextNode := false,start
+	maxSteps := 32
+	i := 0
+
+	for !found && i < maxSteps{
+		found, nextNode = nextNode.find_successor(id)
+		i++
+	}
+	if found {
+		return nextNode.Address
+	} else {
+		log.Fatal("find failed")
+		return ""
+	}
+}
+
+func (node *Node) find_successor(id *big.Int) (bool, *Node) {
+	successor := getNode(string(node.Successors[0]))
+
+	if between(&node.Id, id,&successor.Id,true){
+		fmt.Println("WE SHOULD NO BE HERE!")
+		return true,successor
+	} else{
+		return false, successor
+	}	
 }
 
 func (node *Node) stabilize() {
 	// Retrieve the predecessor of the successor
-	x := getNode(string(node.Successors[0]))
-	xSuccessor := getNode(string(x.Successors[0]))
+	successor := getNode(string(node.Successors[0]))
+	x := getNode(string(successor.Predecessor))
 
+	println(x)
 
 	// Check if x is a valid predecessor
-	if x != nil && between(&x.Id, &node.Id,&xSuccessor.Id, true) {
+	if x != nil && between(&node.Id, &x.Id,&successor.Id, false) {
+		fmt.Println("HErro")
 		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
 	}
 
 	// Notify the successor about the current node (n)
-	x.notify(node)
+	successor.notify(node)
 }
 
-func (n *Node) notify(predecessorCandidate *Node) {
-	predecessor := getNode(string(n.Predecessor))
+func (node *Node) notify(predecessorCandidate *Node) {
+	predecessor := getNode(string(node.Predecessor))
 	// Check if the received predecessorCandidate is a valid predecessor
-	if n.Predecessor == "" || between(&predecessor.Id,&predecessorCandidate.Id,&n.Id,true) {
+	if predecessor == nil || between(&predecessor.Id, &predecessorCandidate.Id, &node.Id, false) {
 		// Update the predecessor of the current node
-		n.Predecessor = predecessorCandidate.Address
+		handleAddPredecessor(string(node.Address),string(predecessorCandidate.Address))
 	}
 }
-
