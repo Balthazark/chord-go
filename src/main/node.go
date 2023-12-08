@@ -16,7 +16,7 @@ type Key string
 type NodeAddress string
 
 type Node struct {
-	Id          big.Int
+	Id          *big.Int
 	Address     NodeAddress
 	FingerTable []NodeAddress
 	Predecessor NodeAddress
@@ -49,7 +49,7 @@ func CreateNode(ip string, port, r int) {
 
 func InitializeChordNode(ip string, port, r int) *Node {
 	node := &Node{
-		Id:          *hashString(fmt.Sprintf("%s:%d", ip, port)),
+		Id:          hashString(fmt.Sprintf("%s:%d", ip, port)),
 		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
 		FingerTable: make([]NodeAddress, 0),
 		Predecessor: "",
@@ -138,7 +138,7 @@ func (node *Node) GetAll(id *big.Int, reply *map[string]string) error {
 	temp := make(map[string]string, 0)
 
 	for key, value := range node.Bucket {
-		if between(id, hashString(string(key)), &node.Id, true) {
+		if between(id, hashString(string(key)), node.Id, true) {
 			temp[string(key)] = value
 			delete(node.Bucket, key)
 		}
@@ -322,8 +322,11 @@ func find(id *big.Int, start *Node) NodeAddress {
 
 func (node *Node) find_successor(id *big.Int) (bool, *Node) {
 	successor := getNode(string(node.Successors[0]))
+	fmt.Println("ID: ", id)
 
-	if between(&node.Id, id, &successor.Id, true) {
+	if between(node.Id, id, successor.Id, true) {
+		fmt.Println(successor.Address)
+		fmt.Println(node.Address)
 		return true, successor
 	} else {
 		return false, successor
@@ -338,7 +341,7 @@ func (node *Node) stabilize() {
 	println(x)
 
 	// Check if x is a valid predecessor
-	if x != nil && between(&node.Id, &x.Id, &successor.Id, false) {
+	if x != nil && between(node.Id, x.Id, successor.Id, false) {
 		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
 	}
 
@@ -349,7 +352,7 @@ func (node *Node) stabilize() {
 func (node *Node) notify(predecessorCandidate *Node) {
 	predecessor := getNode(string(node.Predecessor))
 	// Check if the received predecessorCandidate is a valid predecessor
-	if predecessor == nil || between(&predecessor.Id, &predecessorCandidate.Id, &node.Id, false) {
+	if predecessor == nil || between(predecessor.Id, predecessorCandidate.Id, node.Id, false) {
 		// Update the predecessor of the current node
 		handleAddPredecessor(string(node.Address), string(predecessorCandidate.Address))
 	}

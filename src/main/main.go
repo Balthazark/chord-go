@@ -175,7 +175,7 @@ func main() {
 
 	if !isNewRing {
 		joinNode := getNode(fmt.Sprintf("%s:%s",argsMap["--ja"],argsMap["--jp"]))
-		successor := find(&node.Id,joinNode)
+		successor := find(node.Id,joinNode)
 		node.Successors[0] = successor
 	}
 
