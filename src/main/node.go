@@ -119,6 +119,7 @@ func (node *Node) Delete(request Key, reply *bool) error {
 }
 
 func (node *Node) Dump(request *struct{}, reply *struct{}) error {
+	fmt.Println("Id: ", node.Id)
 	fmt.Println("Adress: ", node.Address)
 	fmt.Println("Pred: ", node.Predecessor)
 	fmt.Println("SUcc: ", node.Successors)
@@ -227,7 +228,8 @@ func PingChordNode(address string) {
 
 // Function to perform the get operation on the specified Chord node
 func GetKeyValue(start *Node, key Key) {
-	address := find(&start.Id, start)
+	keyHash := hashString(string(key))
+	address := find(keyHash, start)
 
 	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
@@ -246,6 +248,7 @@ func GetKeyValue(start *Node, key Key) {
 // Function to perform the put operation on the specified Chord node
 func PutKeyValue(start *Node, key Key, value string) {
 	keyHash := hashString(string(key))
+	fmt.Println("KEYHASH BEFORE PUT", keyHash)
 	address := find(keyHash, start)
 
 	client, err := rpc.DialHTTP("tcp", string(address))
@@ -265,7 +268,8 @@ func PutKeyValue(start *Node, key Key, value string) {
 
 // Function to perform the delete operation on the specified Chord node
 func DeleteKeyValue(start *Node, key Key) {
-	address := find(&start.Id, start)
+	keyHash := hashString(string(key))
+	address := find(keyHash, start)
 
 	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
