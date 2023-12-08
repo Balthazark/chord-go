@@ -245,7 +245,8 @@ func GetKeyValue(start *Node, key Key) {
 
 // Function to perform the put operation on the specified Chord node
 func PutKeyValue(start *Node, key Key, value string) {
-	address := find(&start.Id, start)
+	keyHash := hashString(string(key))
+	address := find(keyHash, start)
 
 	client, err := rpc.DialHTTP("tcp", string(address))
 	if err != nil {
