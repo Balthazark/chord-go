@@ -93,22 +93,20 @@ func handleInput(port int, node *Node) {
 		case "quit":
 			handleNodeShutdown(node)
 			os.Exit(0)
-		case "get":
-			fmt.Print("Usage: get <key>")
+		case "Lookup":
 			if len(args) != 2 {
 				fmt.Println("Invalid command. Usage: get <key>")
 				continue
 			}
 			key := Key(args[1])
 			GetKeyValue(node,  key)
-		case "put":
-			if len(args) != 3 {
-				fmt.Println("Invalid command. Usage: put <key> <value>")
+		case "StoreFile":
+			if len(args) != 2 {
+				fmt.Println("Invalid command. Usage: put <filepath>")
 				continue
 			}
-			key := Key(args[1])
-			value := args[2]
-			PutKeyValue(node, key, value)
+			file := args[1]
+			PutKeyValue(node, file)
 		case "dump":
 			node.DumpNode()
 		default:
@@ -124,7 +122,7 @@ func handleStabilize(node *Node, timeOut,r int) {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("Stabilize")
+			//fmt.Println("Stabilize")
 			node.stabilize(r)
 		}
 	}
@@ -137,8 +135,21 @@ func handleFingers(node *Node, timeOut int) {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("Fingers")
+			//fmt.Println("Fix Fingers")
 			node.fix_fingers()
+		}
+	}
+}
+
+func handlePredecessor(node *Node, timeOut int) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			//fmt.Println("Check Predecessor")
+			node.check_predecessor()
 		}
 	}
 }
@@ -163,6 +174,7 @@ func main() {
 	r := parsePort(argsMap["-r"])	
 	ts := parsePort(argsMap["--ts"])
 	tff := parsePort(argsMap["--tff"])
+	tcp := parsePort(argsMap["--tcp"])
 
 	node := InitializeChordNode(argsMap["-a"], port);
 
@@ -189,6 +201,7 @@ func main() {
 	node.stabilize(r)
 	go handleStabilize(node, ts,r)
 	go handleFingers(node,tff)
+	go handlePredecessor(node,tcp)
 
 	select {}
 }

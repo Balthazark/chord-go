@@ -3,10 +3,13 @@ package main
 import (
 	"crypto/sha1"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"math/big"
 	"net/rpc"
+	"os"
+	"path/filepath"
 )
 
 //Types for modeling a node
@@ -38,7 +41,7 @@ func InitializeChordNode(ip string, port int) *Node {
 		Successors:  make([]NodeAddress, 0),
 		Bucket:      make(map[Key]string),
 	}
-
+	os.Mkdir(fmt.Sprintf("../files-%d",node.Id),0755)
 	node.Successors = append(node.Successors, node.Address)
 	return node
 }
@@ -85,11 +88,19 @@ func (node *Node) Get(request Key, reply *string) error {
 	return nil
 }
 
-func (node *Node) Put(kvPair map[string]string, reply *bool) error {
-	for key, value := range kvPair {
-		node.Bucket[Key(key)] = value
+func (node *Node) Put(file string, reply *bool) error {
+	fileName := filepath.Base(file)
+	dest := fmt.Sprintf("../files-%d/%s",node.Id,fileName)
+
+	err := copyFile(file,dest)
+	if err != nil{
+		fmt.Println("Failed to post file")
+		fmt.Println(err)
+		*reply = false
+		return nil 
 	}
 
+	node.Bucket[Key(fileName)] = dest
 	*reply = true
 	return nil
 }
@@ -217,8 +228,8 @@ func GetKeyValue(start *Node, key Key) {
 }
 
 // Function to perform the put operation on the specified Chord node
-func PutKeyValue(start *Node, key Key, value string) {
-	keyHash := hashString(string(key))
+func PutKeyValue(start *Node, file string) {
+	keyHash := hashString(filepath.Base(file))
 	address := find(keyHash, start)
 
 	client, err := rpc.DialHTTP("tcp", string(address))
@@ -226,14 +237,14 @@ func PutKeyValue(start *Node, key Key, value string) {
 		log.Fatal("Error connecting to Chord node:", err)
 	}
 
-	kvPair := map[string]string{string(key): value}
+
 	var reply bool
-	err = client.Call("Node.Put", kvPair, &reply)
+	err = client.Call("Node.Put", file, &reply)
 	if err != nil {
 		log.Fatal("Error calling Put method:", err)
 	}
 
-	fmt.Printf("Put response from %s for key %s: %t\n", address, key, reply)
+	fmt.Printf("Put response from %s for key %s: %t\n", address, file, reply)
 }
 
 // Helpers
@@ -336,6 +347,14 @@ func (node *Node) closest_preceding_node(id *big.Int) *Node {
 	return getNode(string(node.Successors[0]))
 }
 
+func (node *Node) check_predecessor(){
+	predecessor := getNode(string(node.Predecessor))
+
+	if predecessor == nil {
+		node.Predecessor = ""
+	}
+}
+
 func safeSuccessor(successors []NodeAddress) *Node{
 	for _,s := range successors{
 		successor := getNode(string(s))
@@ -346,5 +365,27 @@ func safeSuccessor(successors []NodeAddress) *Node{
 	}
 
 	log.Fatal("No successors found!")
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destinationFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destinationFile.Close()
+
+	_, err = io.Copy(destinationFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("File copied from %s to %s\n", src, dst)
 	return nil
 }
