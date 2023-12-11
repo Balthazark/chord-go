@@ -26,6 +26,9 @@ type Node struct {
 	Bucket map[Key]string
 }
 
+const m = 6
+var twoExpM = big.NewInt(int64(math.Exp2(m)))
+
 // Functions for creating nodes
 func CreateNode(ip string, port, r int) {
 	node := InitializeChordNode(ip, port, r)
@@ -52,7 +55,7 @@ func InitializeChordNode(ip string, port, r int) *Node {
 	node := &Node{
 		Id:          hashString(fmt.Sprintf("%s:%d", ip, port)),
 		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
-		FingerTable: make([]NodeAddress, 0),
+		FingerTable: make([]NodeAddress, m),
 		Predecessor: "",
 		Successors:  make([]NodeAddress, 0),
 		Bucket:      make(map[Key]string),
@@ -125,6 +128,7 @@ func (node *Node) Dump(request *struct{}, reply *struct{}) error {
 	fmt.Println("Pred: ", node.Predecessor)
 	fmt.Println("SUcc: ", node.Successors)
 	fmt.Println("BUCKET: ", node.Bucket)
+	fmt.Println("finger: ", node.FingerTable)
 	return nil
 }
 
@@ -290,11 +294,10 @@ func DeleteKeyValue(start *Node, key Key) {
 func hashString(elt string) *big.Int {
 	hasher := sha1.New()
 	hasher.Write([]byte(elt))
-	return new(big.Int).SetBytes(hasher.Sum(nil))
+	return new(big.Int).Mod(new(big.Int).SetBytes(hasher.Sum(nil)),twoExpM)
 }
 
 func between(start, elt, end *big.Int, inclusive bool) bool {
-	fmt.Print(end.Cmp(start))
 	if end.Cmp(start) == 0 {
 		return true
 	} else if end.Cmp(start) > 0 {
@@ -316,21 +319,17 @@ func find(id *big.Int, start *Node) NodeAddress {
 	if found {
 		return nextNode.Address
 	} else {
-		log.Fatal("find failed")
+		log.Fatal("find failed ", id)
 		return ""
 	}
 }
 
 func (node *Node) find_successor(id *big.Int) (bool, *Node) {
 	successor := getNode(string(node.Successors[0]))
-	fmt.Println("ID: ", id)
-
 	if between(node.Id, id, successor.Id, true) {
-		fmt.Println(successor.Address)
-		fmt.Println(node.Address)
 		return true, successor
 	} else {
-		return false, successor
+		return false, node.closest_preceding_node(id)
 	}
 }
 
@@ -360,19 +359,34 @@ func (node *Node) notify(predecessorCandidate *Node) {
 }
 
 func (node *Node) fix_fingers(){
-	for i := range node.FingerTable{
-
-		entry := node.Id.Add( node.Id, big.NewInt(int64(math.Pow(2,float64(i)))))
-		id := entry.Mod(entry,big.NewInt(int64(math.Pow(2,32))))
-
-		inBetween, nextNode := node.find_successor(id)
-
-		for !inBetween {
-			nextNode.find_successor(id)
-		}
-		
-		node.FingerTable[i] = nextNode.Address
+	
+	for i := 0; i < len(node.FingerTable); i++ {
+		exp := big.NewInt(int64(i))
+		id := new(big.Int).Mod(new(big.Int).Add(node.Id, new(big.Int).Exp(big.NewInt(2), exp, nil)), twoExpM)
+		node.FingerTable[i] = find(id,node)
 	}
 }
+
+func (node *Node) init_fingers(){	
+	for i := range node.FingerTable{
+		node.FingerTable[i] = node.Successors[0]
+	}
+
+}
+
+func (node *Node) closest_preceding_node(id *big.Int) *Node {
+	
+	for i := len(node.FingerTable) - 1; i >= 1; i--{
+		if node.FingerTable[i] == ""{
+			continue
+		}
+		fingerId := hashString(string(node.FingerTable[i]))
+		if between(node.Id, fingerId, id,true){
+			return getNode(string(node.FingerTable[i]))
+		}
+	}
+	return getNode(string(node.Successors[0]))
+}
+
 
 	
