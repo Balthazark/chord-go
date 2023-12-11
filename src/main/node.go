@@ -56,7 +56,8 @@ func getNode(address string) *Node {
 
 	client, err := rpc.DialHTTP("tcp", address)
 	if err != nil {
-		log.Fatal("Error connecting to Chord node", err)
+		fmt.Println("Error connecting to Chord node", err)
+		return nil
 	}
 	var reply Node
 	err = client.Call("Node.Self", "", &reply)
@@ -325,7 +326,7 @@ func find(id *big.Int, start *Node) NodeAddress {
 }
 
 func (node *Node) find_successor(id *big.Int) (bool, *Node) {
-	successor := getNode(string(node.Successors[0]))
+	successor := safeSuccessor(node.Successors)
 	if between(node.Id, id, successor.Id, true) {
 		return true, successor
 	} else {
@@ -335,7 +336,7 @@ func (node *Node) find_successor(id *big.Int) (bool, *Node) {
 
 func (node *Node) stabilize(r int) {
 	// Retrieve the predecessor of the successor
-	successor := getNode(string(node.Successors[0]))
+	successor := safeSuccessor(node.Successors)
 	x := getNode(string(successor.Predecessor))
 
 	// Check if x is a valid predecessor
@@ -351,7 +352,7 @@ func (node *Node) stabilize(r int) {
 	nextNode := successor
 	for i < r {
 		tmpSuccessors = append(tmpSuccessors, nextNode.Address)
-		nextNode = getNode(string(nextNode.Successors[0]))
+		nextNode = safeSuccessor(nextNode.Successors)
 		i++
 	}
 
@@ -388,4 +389,17 @@ func (node *Node) closest_preceding_node(id *big.Int) *Node {
 		}
 	}
 	return getNode(string(node.Successors[0]))
+}
+
+func safeSuccessor(successors []NodeAddress) *Node{
+	for _,s := range successors{
+		successor := getNode(string(s))
+
+		if successor != nil {
+			return successor
+		}
+	}
+
+	log.Fatal("No successors found!")
+	return nil
 }
