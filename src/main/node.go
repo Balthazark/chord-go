@@ -112,16 +112,6 @@ func (node *Node) Delete(request Key, reply *bool) error {
 	return nil
 }
 
-func (node *Node) Dump(request *struct{}, reply *struct{}) error {
-	fmt.Println("Id: ", node.Id)
-	fmt.Println("Adress: ", node.Address)
-	fmt.Println("Pred: ", node.Predecessor)
-	fmt.Println("SUcc: ", node.Successors)
-	fmt.Println("BUCKET: ", node.Bucket)
-	fmt.Println("finger: ", node.FingerTable)
-	return nil
-}
-
 func (node *Node) Join(successorAddress string, reply *string) error {
 	node.Successors = append(node.Successors, NodeAddress(successorAddress))
 	*reply = "Successfully joined"
@@ -201,18 +191,39 @@ func (node *Node) AddPredecessor(predecessorAddress string, reply *string) error
 }
 
 func (node *Node) DumpNode() {
-	client, err := rpc.DialHTTP("tcp", string(node.Address))
-	if err != nil {
-		log.Fatal("Error connecting to Chord node", err)
+
+	successorMap := make(map[NodeAddress]Node)
+	fingerMap := make(map[NodeAddress]Node)
+
+	for _, address := range node.Successors {
+		successor := getNode(string(address))
+		successorMap[successor.Address] = *successor
 	}
 
-	var reply struct{}
-	var args struct{}
-
-	err = client.Call("Node.Dump", &args, &reply)
-	if err != nil {
-		log.Fatal("Error calling dump method")
+	for _, address := range node.FingerTable {
+		finger := getNode(string(address))
+		fingerMap[finger.Address] = *finger
 	}
+
+	fmt.Println("Node id: ", node.Id)
+	fmt.Println("Node address and port: ", node.Address)
+
+	fmt.Println("Successor information")
+
+	i := 1
+	for k,v := range successorMap {
+		fmt.Println("Succesor ", i, "id: ", v.Id)
+		fmt.Println("Succesor ", i, "address: ", k)
+		i++
+	}
+
+	i = 1
+	for k,v := range fingerMap {
+		fmt.Println("Finger ", i, "id: ", v.Id)
+		fmt.Println("Finger ", i, "address: ", k)
+		i++
+	}
+
 }
 
 

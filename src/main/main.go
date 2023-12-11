@@ -107,7 +107,7 @@ func handleInput(port int, node *Node) {
 			}
 			file := args[1]
 			PutKeyValue(node, file)
-		case "dump":
+		case "PrintState":
 			node.DumpNode()
 		default:
 			fmt.Println("Unknown command. Type 'help' for available commands.")
@@ -163,6 +163,8 @@ func parsePort(portArg string) int {
 }
 
 func main() {
+
+	os.RemoveAll("../../files-*")
 
 	args := os.Args
 
