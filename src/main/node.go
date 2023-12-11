@@ -170,19 +170,6 @@ func handleGetAll(node *Node, successorAddress string) map[string]string {
 	return reply
 }
 
-func (node *Node) AddSuccessor(successorAddress string) {
-	client, err := rpc.DialHTTP("tcp", successorAddress)
-	if err != nil {
-		log.Fatal("Error connecting to Chord node", err)
-	}
-	var reply string
-	err = client.Call("Node.Join", node.Address, &reply)
-	if err != nil {
-		log.Fatal("Error calling Join method")
-	}
-
-	fmt.Println(reply)
-}
 
 func handleAddPredecessor(node string, predecessor string) {
 	client, err := rpc.DialHTTP("tcp", node)
@@ -217,39 +204,16 @@ func (node *Node) DumpNode() {
 	}
 }
 
-// Node handlers for key values
-func PingChordNode(address string) {
-	client, err := rpc.DialHTTP("tcp", address)
-	if err != nil {
-		log.Fatal("Error connecting to Chord node:", err)
-	}
-
-	var reply string
-	err = client.Call("Node.Ping", "Ping request", &reply)
-	if err != nil {
-		log.Fatal("Error calling Ping method:", err)
-	}
-
-	fmt.Println("Ping response from", address, ":", reply)
-}
 
 // Function to perform the get operation on the specified Chord node
 func GetKeyValue(start *Node, key Key) {
 	keyHash := hashString(string(key))
 	address := find(keyHash, start)
 
-	client, err := rpc.DialHTTP("tcp", string(address))
-	if err != nil {
-		log.Fatal("Error connecting to Chord node:", err)
-	}
+	node := getNode(string(address))
 
-	var reply string
-	err = client.Call("Node.Get", key, &reply)
-	if err != nil {
-		log.Fatal("Error calling Get method:", err)
-	}
-
-	fmt.Printf("Get response from %s for key %s: %s\n", address, key, reply)
+	fmt.Println(node.Id)
+	fmt.Println(node.Address)
 }
 
 // Function to perform the put operation on the specified Chord node
@@ -270,25 +234,6 @@ func PutKeyValue(start *Node, key Key, value string) {
 	}
 
 	fmt.Printf("Put response from %s for key %s: %t\n", address, key, reply)
-}
-
-// Function to perform the delete operation on the specified Chord node
-func DeleteKeyValue(start *Node, key Key) {
-	keyHash := hashString(string(key))
-	address := find(keyHash, start)
-
-	client, err := rpc.DialHTTP("tcp", string(address))
-	if err != nil {
-		log.Fatal("Error connecting to Chord node:", err)
-	}
-
-	var reply bool
-	err = client.Call("Node.Delete", key, &reply)
-	if err != nil {
-		log.Fatal("Error calling Delete method:", err)
-	}
-
-	fmt.Printf("Delete response from %s for key %s: %t\n", address, key, reply)
 }
 
 // Helpers

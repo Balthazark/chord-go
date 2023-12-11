@@ -86,66 +86,31 @@ func handleInput(port int, node *Node) {
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {
 		input := scanner.Text()
-		switch input {
+		args := strings.Fields(input)
+		switch args[0] {
 		case "help":
 			fmt.Println("Available commands: help, quit, port, ...")
 		case "quit":
 			handleNodeShutdown(node)
 			os.Exit(0)
-		case "port":
-			fmt.Println("Current port:", port)
-		case "ping":
-			fmt.Print("Enter address to ping (format: IP:Port): ")
-			scanner.Scan()
-			address := scanner.Text()
-			PingChordNode(address)
 		case "get":
 			fmt.Print("Usage: get <key>")
-			scanner.Scan()
-			input := scanner.Text()
-			getArgs := strings.Fields(input)
-			if len(getArgs) < 1 {
+			if len(args) != 2 {
 				fmt.Println("Invalid command. Usage: get <key>")
 				continue
 			}
-			key := Key(getArgs[0])
+			key := Key(args[1])
 			GetKeyValue(node,  key)
 		case "put":
-			fmt.Println("Enter key value address: <key> <value>")
-			scanner.Scan()
-			input := scanner.Text()
-			putArgs := strings.Fields(input)
-			if len(putArgs) < 2 {
+			if len(args) != 3 {
 				fmt.Println("Invalid command. Usage: put <key> <value>")
 				continue
 			}
-			key := Key(putArgs[0])
-			value := putArgs[1]
+			key := Key(args[1])
+			value := args[2]
 			PutKeyValue(node, key, value)
-		case "delete":
-			fmt.Println("Usage: get <key>")
-			scanner.Scan()
-			input := scanner.Text()
-			deleteArgs := strings.Fields(input)
-			if len(deleteArgs) < 1 {
-				fmt.Println("Invalid command. Usage: delete <key>")
-				continue
-			}
-			key := Key(deleteArgs[0])
-			DeleteKeyValue(node, key)
 		case "dump":
 			node.DumpNode()
-		case "join":
-			fmt.Println("Enter: <successorAddress>")
-			scanner.Scan()
-			input := scanner.Text()
-			joinArgs := strings.Fields(input)
-			if len(joinArgs) < 1 {
-				fmt.Println("Invalid command. Usage: join <address>")
-				continue
-			}
-			node.AddSuccessor(joinArgs[0])
-
 		default:
 			fmt.Println("Unknown command. Type 'help' for available commands.")
 		}
