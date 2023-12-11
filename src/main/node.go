@@ -6,7 +6,6 @@ import (
 	"log"
 	"math"
 	"math/big"
-	"net"
 	"net/rpc"
 )
 
@@ -27,31 +26,10 @@ type Node struct {
 }
 
 const m = 6
+
 var twoExpM = big.NewInt(int64(math.Exp2(m)))
 
-// Functions for creating nodes
-func CreateNode(ip string, port, r int) {
-	node := InitializeChordNode(ip, port, r)
-	rpc.Register(node)
-
-	listener, err := net.Listen("tcp", fmt.Sprintf("%s:%d", ip, port))
-	if err != nil {
-		log.Fatal("Error starting RPC server:", err)
-	}
-	defer listener.Close()
-
-	fmt.Printf("Chord node started at %s:%d\n", ip, port)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatal("Error accepting connection:", err)
-		}
-		go rpc.ServeConn(conn)
-	}
-}
-
-func InitializeChordNode(ip string, port, r int) *Node {
+func InitializeChordNode(ip string, port int) *Node {
 	node := &Node{
 		Id:          hashString(fmt.Sprintf("%s:%d", ip, port)),
 		Address:     NodeAddress(fmt.Sprintf("%s:%d", ip, port)),
@@ -161,9 +139,9 @@ func (node *Node) PutAll(bucket map[Key]string, reply *string) error {
 	return nil
 }
 
-func handleNodeShutdown(node *Node){
-	for _, successorAddress := range node.Successors{
-		client, err := rpc.DialHTTP("tcp",string(successorAddress))
+func handleNodeShutdown(node *Node) {
+	for _, successorAddress := range node.Successors {
+		client, err := rpc.DialHTTP("tcp", string(successorAddress))
 		if err != nil {
 			fmt.Println("Node has gone down", successorAddress)
 			continue
@@ -316,7 +294,7 @@ func DeleteKeyValue(start *Node, key Key) {
 func hashString(elt string) *big.Int {
 	hasher := sha1.New()
 	hasher.Write([]byte(elt))
-	return new(big.Int).Mod(new(big.Int).SetBytes(hasher.Sum(nil)),twoExpM)
+	return new(big.Int).Mod(new(big.Int).SetBytes(hasher.Sum(nil)), twoExpM)
 }
 
 func between(start, elt, end *big.Int, inclusive bool) bool {
@@ -355,7 +333,7 @@ func (node *Node) find_successor(id *big.Int) (bool, *Node) {
 	}
 }
 
-func (node *Node) stabilize() {
+func (node *Node) stabilize(r int) {
 	// Retrieve the predecessor of the successor
 	successor := getNode(string(node.Successors[0]))
 	x := getNode(string(successor.Predecessor))
@@ -363,10 +341,21 @@ func (node *Node) stabilize() {
 	// Check if x is a valid predecessor
 	if x != nil && between(node.Id, x.Id, successor.Id, false) {
 		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
+		successor = getNode(string(node.Successors[0]))
 	}
 
 	// Notify the successor about the current node (n)
 	successor.notify(node)
+	i := 0
+	tmpSuccessors := make([]NodeAddress, 0)
+	nextNode := successor
+	for i < r {
+		tmpSuccessors = append(tmpSuccessors, nextNode.Address)
+		nextNode = getNode(string(nextNode.Successors[0]))
+		i++
+	}
+
+	node.Successors = tmpSuccessors
 }
 
 func (node *Node) notify(predecessorCandidate *Node) {
@@ -378,28 +367,25 @@ func (node *Node) notify(predecessorCandidate *Node) {
 	}
 }
 
-func (node *Node) fix_fingers(){
-	
+func (node *Node) fix_fingers() {
+
 	for i := 0; i < len(node.FingerTable); i++ {
 		exp := big.NewInt(int64(i))
 		id := new(big.Int).Mod(new(big.Int).Add(node.Id, new(big.Int).Exp(big.NewInt(2), exp, nil)), twoExpM)
-		node.FingerTable[i] = find(id,node)
+		node.FingerTable[i] = find(id, node)
 	}
 }
 
 func (node *Node) closest_preceding_node(id *big.Int) *Node {
-	
-	for i := len(node.FingerTable) - 1; i >= 1; i--{
-		if node.FingerTable[i] == ""{
+
+	for i := len(node.FingerTable) - 1; i >= 1; i-- {
+		if node.FingerTable[i] == "" {
 			continue
 		}
 		fingerId := hashString(string(node.FingerTable[i]))
-		if between(node.Id, fingerId, id,true){
+		if between(node.Id, fingerId, id, true) {
 			return getNode(string(node.FingerTable[i]))
 		}
 	}
 	return getNode(string(node.Successors[0]))
 }
-
-
-	

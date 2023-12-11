@@ -152,7 +152,7 @@ func handleInput(port int, node *Node) {
 	}
 }
 
-func handleStabilize(node *Node, timeOut int) {
+func handleStabilize(node *Node, timeOut,r int) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -160,7 +160,7 @@ func handleStabilize(node *Node, timeOut int) {
 		select {
 		case <-ticker.C:
 			fmt.Println("Stabilize")
-			node.stabilize()
+			node.stabilize(r)
 		}
 	}
 }
@@ -199,7 +199,7 @@ func main() {
 	ts := parsePort(argsMap["--ts"])
 	tff := parsePort(argsMap["--tff"])
 
-	node := InitializeChordNode(argsMap["-a"], port, r);
+	node := InitializeChordNode(argsMap["-a"], port);
 
 	if !isNewRing {
 		joinNode := getNode(fmt.Sprintf("%s:%s",argsMap["--ja"],argsMap["--jp"]))
@@ -221,8 +221,8 @@ func main() {
 	go http.Serve(listener, nil)
 	go handleInput(port,node)
 
-	node.stabilize()
-	go handleStabilize(node, ts)
+	node.stabilize(r)
+	go handleStabilize(node, ts,r)
 	go handleFingers(node,tff)
 
 	select {}
