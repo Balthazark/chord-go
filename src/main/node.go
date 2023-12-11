@@ -4,6 +4,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"log"
+	"math"
 	"math/big"
 	"net"
 	"net/rpc"
@@ -357,3 +358,21 @@ func (node *Node) notify(predecessorCandidate *Node) {
 		handleAddPredecessor(string(node.Address), string(predecessorCandidate.Address))
 	}
 }
+
+func (node *Node) fix_fingers(){
+	for i := range node.FingerTable{
+
+		entry := node.Id.Add( node.Id, big.NewInt(int64(math.Pow(2,float64(i)))))
+		id := entry.Mod(entry,big.NewInt(int64(math.Pow(2,32))))
+
+		inBetween, nextNode := node.find_successor(id)
+
+		for !inBetween {
+			nextNode.find_successor(id)
+		}
+		
+		node.FingerTable[i] = nextNode.Address
+	}
+}
+
+	
