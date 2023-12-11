@@ -12,8 +12,6 @@ import (
 	"path/filepath"
 )
 
-//Types for modeling a node
-
 type Key string
 
 type NodeAddress string
@@ -71,13 +69,6 @@ func getNode(address string) *Node {
 	return &reply
 }
 
-// Node rpc functions
-func (node *Node) Ping(request string, reply *string) error {
-	fmt.Println("RAN PING FUNCTION")
-	*reply = "Pong"
-	return nil
-}
-
 func (node *Node) Get(request Key, reply *string) error {
 	value, exists := node.Bucket[request]
 	if !exists {
@@ -112,25 +103,33 @@ func (node *Node) Delete(request Key, reply *bool) error {
 	return nil
 }
 
-func (node *Node) Join(successorAddress string, reply *string) error {
-	node.Successors = append(node.Successors, NodeAddress(successorAddress))
-	*reply = "Successfully joined"
-	return nil
-}
+func (node *Node) GetAll(id *big.Int, reply *map[Key]string) error {
 
-func (node *Node) GetAll(id *big.Int, reply *map[string]string) error {
-
-	temp := make(map[string]string, 0)
+	temp := make(map[Key]string, 0)
 
 	for key, value := range node.Bucket {
 		if between(id, hashString(string(key)), node.Id, true) {
-			temp[string(key)] = value
+			temp[key] = value
 			delete(node.Bucket, key)
 		}
 	}
-
 	*reply = temp
 	return nil
+}
+
+func (node *Node) handleNewNode(successorAddress string){
+	client, err := rpc.DialHTTP("tcp", successorAddress)
+	if err != nil {
+		log.Fatal("Error connecting to successor node")
+	}
+
+	var reply = make(map[Key]string,0)
+
+	err = client.Call("Node.GetAll", node.Id, &reply) 
+	if err != nil {
+		log.Fatal("Failed to get and delete keys from successor")
+	}
+	node.Bucket = reply
 }
 
 func (node *Node) PutAll(bucket map[Key]string, reply *string) error {
@@ -227,7 +226,6 @@ func (node *Node) DumpNode() {
 }
 
 
-// Function to perform the get operation on the specified Chord node
 func GetKeyValue(start *Node, key Key) {
 	keyHash := hashString(string(key))
 	address := find(keyHash, start)
@@ -238,7 +236,6 @@ func GetKeyValue(start *Node, key Key) {
 	fmt.Println(node.Address)
 }
 
-// Function to perform the put operation on the specified Chord node
 func PutKeyValue(start *Node, file string) {
 	keyHash := hashString(filepath.Base(file))
 	address := find(keyHash, start)
@@ -258,7 +255,6 @@ func PutKeyValue(start *Node, file string) {
 	fmt.Printf("Put response from %s for key %s: %t\n", address, file, reply)
 }
 
-// Helpers
 func hashString(elt string) *big.Int {
 	hasher := sha1.New()
 	hasher.Write([]byte(elt))
@@ -302,17 +298,14 @@ func (node *Node) find_successor(id *big.Int) (bool, *Node) {
 }
 
 func (node *Node) stabilize(r int) {
-	// Retrieve the predecessor of the successor
 	successor := safeSuccessor(node.Successors)
 	x := getNode(string(successor.Predecessor))
 
-	// Check if x is a valid predecessor
 	if x != nil && between(node.Id, x.Id, successor.Id, false) {
-		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
+		node.Successors[0] = x.Address 
 		successor = getNode(string(node.Successors[0]))
 	}
 
-	// Notify the successor about the current node (n)
 	successor.notify(node)
 	i := 0
 	tmpSuccessors := make([]NodeAddress, 0)
@@ -328,9 +321,7 @@ func (node *Node) stabilize(r int) {
 
 func (node *Node) notify(predecessorCandidate *Node) {
 	predecessor := getNode(string(node.Predecessor))
-	// Check if the received predecessorCandidate is a valid predecessor
 	if predecessor == nil || between(predecessor.Id, predecessorCandidate.Id, node.Id, false) {
-		// Update the predecessor of the current node
 		handleAddPredecessor(string(node.Address), string(predecessorCandidate.Address))
 	}
 }

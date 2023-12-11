@@ -99,7 +99,7 @@ func handleInput(port int, node *Node) {
 				continue
 			}
 			key := Key(args[1])
-			GetKeyValue(node,  key)
+			GetKeyValue(node, key)
 		case "StoreFile":
 			if len(args) != 2 {
 				fmt.Println("Invalid command. Usage: put <filepath>")
@@ -115,14 +115,14 @@ func handleInput(port int, node *Node) {
 	}
 }
 
-func handleStabilize(node *Node, timeOut,r int) {
+func handleStabilize(node *Node, timeOut, r int) {
 	ticker := time.NewTicker(time.Duration(timeOut) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("Stabilize")
+			//fmt.Println("Stabilize")
 			node.stabilize(r)
 		}
 	}
@@ -135,7 +135,7 @@ func handleFingers(node *Node, timeOut int) {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("Fix Fingers")
+			//fmt.Println("Fix Fingers")
 			node.fix_fingers()
 		}
 	}
@@ -148,7 +148,7 @@ func handlePredecessor(node *Node, timeOut int) {
 	for {
 		select {
 		case <-ticker.C:
-			fmt.Println("Check Predecessor")
+			//fmt.Println("Check Predecessor")
 			node.check_predecessor()
 		}
 	}
@@ -173,19 +173,19 @@ func main() {
 	isNewRing, argsMap := validateArgs(args)
 
 	port := parsePort(argsMap["-p"])
-	r := parsePort(argsMap["-r"])	
+	r := parsePort(argsMap["-r"])
 	ts := parsePort(argsMap["--ts"])
 	tff := parsePort(argsMap["--tff"])
 	tcp := parsePort(argsMap["--tcp"])
 
-	node := InitializeChordNode(argsMap["-a"], port);
+	node := InitializeChordNode(argsMap["-a"], port)
 
 	if !isNewRing {
-		joinNode := getNode(fmt.Sprintf("%s:%s",argsMap["--ja"],argsMap["--jp"]))
-		successor := find(node.Id,joinNode)
+		joinNode := getNode(fmt.Sprintf("%s:%s", argsMap["--ja"], argsMap["--jp"]))
+		successor := find(node.Id, joinNode)
 		node.Successors[0] = successor
+		node.handleNewNode(string(successor))
 	}
-
 
 	rpc.Register(node)
 	rpc.HandleHTTP()
@@ -198,12 +198,12 @@ func main() {
 
 	fmt.Printf("Chord node started at %s\n", node.Address)
 	go http.Serve(listener, nil)
-	go handleInput(port,node)
+	go handleInput(port, node)
 
 	node.stabilize(r)
-	go handleStabilize(node, ts,r)
-	go handleFingers(node,tff)
-	go handlePredecessor(node,tcp)
+	go handleStabilize(node, ts, r)
+	go handleFingers(node, tff)
+	go handlePredecessor(node, tcp)
 
 	select {}
 }
