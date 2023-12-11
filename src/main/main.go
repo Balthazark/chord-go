@@ -90,6 +90,7 @@ func handleInput(port int, node *Node) {
 		case "help":
 			fmt.Println("Available commands: help, quit, port, ...")
 		case "quit":
+			handleNodeShutdown(node)
 			os.Exit(0)
 		case "port":
 			fmt.Println("Current port:", port)

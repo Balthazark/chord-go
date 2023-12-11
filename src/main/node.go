@@ -153,6 +153,31 @@ func (node *Node) GetAll(id *big.Int, reply *map[string]string) error {
 	return nil
 }
 
+func (node *Node) PutAll(bucket map[Key]string, reply *string) error {
+	for key, value := range bucket {
+		node.Bucket[key] = value
+	}
+	*reply = "Successfully added keys to successor node: "
+	return nil
+}
+
+func handleNodeShutdown(node *Node){
+	for _, successorAddress := range node.Successors{
+		client, err := rpc.DialHTTP("tcp",string(successorAddress))
+		if err != nil {
+			fmt.Println("Node has gone down", successorAddress)
+			continue
+		}
+		var reply string
+		err = client.Call("Node.PutAll", node.Bucket, &reply)
+		if err != nil {
+			log.Fatal("Failed to move keys to successor", successorAddress)
+		}
+		fmt.Println(reply, successorAddress)
+		return
+	}
+}
+
 func handleGetAll(node *Node, successorAddress string) map[string]string {
 	client, err := rpc.DialHTTP("tcp", successorAddress)
 	if err != nil {
@@ -190,8 +215,6 @@ func handleAddPredecessor(node string, predecessor string) {
 	if err != nil {
 		log.Fatal("Error calling Join method")
 	}
-
-	fmt.Println(reply)
 }
 
 func (node *Node) AddPredecessor(predecessorAddress string, reply *string) error {
@@ -253,7 +276,6 @@ func GetKeyValue(start *Node, key Key) {
 // Function to perform the put operation on the specified Chord node
 func PutKeyValue(start *Node, key Key, value string) {
 	keyHash := hashString(string(key))
-	fmt.Println("KEYHASH BEFORE PUT", keyHash)
 	address := find(keyHash, start)
 
 	client, err := rpc.DialHTTP("tcp", string(address))
@@ -338,8 +360,6 @@ func (node *Node) stabilize() {
 	successor := getNode(string(node.Successors[0]))
 	x := getNode(string(successor.Predecessor))
 
-	println(x)
-
 	// Check if x is a valid predecessor
 	if x != nil && between(node.Id, x.Id, successor.Id, false) {
 		node.Successors[0] = x.Address // Update successor if x is a valid predecessor
@@ -365,13 +385,6 @@ func (node *Node) fix_fingers(){
 		id := new(big.Int).Mod(new(big.Int).Add(node.Id, new(big.Int).Exp(big.NewInt(2), exp, nil)), twoExpM)
 		node.FingerTable[i] = find(id,node)
 	}
-}
-
-func (node *Node) init_fingers(){	
-	for i := range node.FingerTable{
-		node.FingerTable[i] = node.Successors[0]
-	}
-
 }
 
 func (node *Node) closest_preceding_node(id *big.Int) *Node {
