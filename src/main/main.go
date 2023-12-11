@@ -116,39 +116,39 @@ func handleInput(port int, node *Node) {
 }
 
 func handleStabilize(node *Node, timeOut,r int) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(time.Duration(timeOut) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			//fmt.Println("Stabilize")
+			fmt.Println("Stabilize")
 			node.stabilize(r)
 		}
 	}
 }
 
 func handleFingers(node *Node, timeOut int) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(time.Duration(timeOut) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			//fmt.Println("Fix Fingers")
+			fmt.Println("Fix Fingers")
 			node.fix_fingers()
 		}
 	}
 }
 
 func handlePredecessor(node *Node, timeOut int) {
-	ticker := time.NewTicker(10 * time.Second)
+	ticker := time.NewTicker(time.Duration(timeOut) * time.Millisecond)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
-			//fmt.Println("Check Predecessor")
+			fmt.Println("Check Predecessor")
 			node.check_predecessor()
 		}
 	}
